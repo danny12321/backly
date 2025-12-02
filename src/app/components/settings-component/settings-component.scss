@@ -1,0 +1,43 @@
+table {
+    margin-top: 10px;
+    border-radius: 3px;
+    overflow: hidden;
+    border-spacing: 0;
+
+    .personalAccessToken {
+        filter: blur(5px);
+        transition: filter 1s;
+    }
+
+    .personalAccessToken:hover {
+        filter: blur(0);
+    }
+
+    th {
+        background-color: rgba(0, 0, 0, 0.2);
+        font-weight: bold;
+    }
+
+    td,
+    th {
+        width: 100%;
+        text-align: left;
+        padding: 10px;
+
+        button {
+            width: 100%;
+        }
+    }
+
+    tr:nth-child(odd) {
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .new-config-row {
+        background-color: transparent!important;
+
+        td {
+            border-top: 1px solid black;
+        }
+    }
+}

@@ -1,0 +1,18 @@
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: whitesmoke;
+    padding: 10px 20px;
+    background-color: rgba(0, 0, 0, 0.8);
+
+    a {
+        color: whitesmoke;
+        margin: 0 10px;
+        text-decoration: none;
+    }
+}
+
+.content {
+    padding: 20px;
+}

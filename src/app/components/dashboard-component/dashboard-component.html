@@ -1,0 +1,14 @@
+<div class="cards">
+
+    @for (workItem of workItems; track $index) {
+
+    <div class="card" [class]="workItem.type.split(' ').join('')">
+        <h3>
+            <a href="{{workItem.url}}">{{ workItem.title }}</a>
+        </h3>
+        <p class="assignedTo">{{ workItem.assignedTo }} - {{ workItem.state }}</p>
+        <div class="content" [innerHTML]="workItem.content"></div>
+        <p class="organization">{{ workItem.organization }} > {{ workItem.project }}</p>
+    </div>
+    }
+</div>

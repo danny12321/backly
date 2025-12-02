@@ -1,0 +1,38 @@
+<h2>
+    <img src="https://cdn.vsassets.io/content/icons/favicon.ico" alt="DevOps icon" width="22px">
+    Azure DevOps integrations
+</h2>
+
+<table>
+    <tr>
+        <th>organization</th>
+        <th>project</th>
+        <th>personal access token</th>
+        <th></th>
+    </tr>
+
+
+    @for (config of this.devopsService.configs; track $index) {
+    <tr>
+        <td>{{ config.organization }}</td>
+        <td>{{ config.project }}</td>
+        <td class="personalAccessToken">{{ config.personalAccessToken.slice(0, 10) }}...</td>
+        <td><button (click)="onDelete($index)">Delete</button></td>
+    </tr>
+    }
+
+    <tr class="new-config-row">
+        <td>
+            <input type="string" [field]="azureDevOpsForm.organization" placeholder="organization" />
+        </td>
+        <td>
+            <input type="string" [field]="azureDevOpsForm.project" placeholder="organization" />
+        </td>
+        <td>
+            <input type="string" [field]="azureDevOpsForm.personalAccessToken" placeholder="personal access token" />
+        </td>
+        <td>
+            <button (click)="onSubmit()">Save</button>
+        </td>
+    </tr>
+</table>
