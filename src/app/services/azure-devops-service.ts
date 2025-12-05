@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { forkJoin, map, mergeMap, Observable, of, switchMap } from 'rxjs';
+import { bufferCount, forkJoin, from, map, mergeMap, Observable, switchMap, } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -34,27 +34,23 @@ export class AzureDevopsService {
     localStorage.setItem(this.azureDevOpsConfigsKey, JSON.stringify(this.configs));
   }
 
-  /** Public API: get work items for all stored configs */
   GetWorkItems(): Observable<WorkItem[]> {
-    // If you prefer: return per-config results instead of flattening everything.
-    const requests = this.configs.map(config => this.getWorkItemsForConfig(config));
-    return forkJoin(requests).pipe(
-      map(results => results.flat().map(wi => wi.result.map(item => ({
-        id: item.id.toString(),
-        title: item.fields['System.Title'],
-        state: item.fields['System.State'],
-        assignedTo: item.fields['System.AssignedTo']?.displayName || 'Unassigned',
-        organization: wi.organization,
-        project: wi.project,
-        type: item.fields['System.WorkItemType'],
-        url: `https://dev.azure.com/${wi.organization}/${wi.project}/_workitems/edit/${item.id}`,
-        content: item.fields['System.Description'] || '',
-      })
-      )).flat())
+    const requests = forkJoin(this.configs.map(config => this.getWorkItemsForConfig(config)));
+    return requests.pipe(
+      map(results => results.map(item => item.result.map(wi => ({
+        id: wi.id.toString(),
+        title: wi.fields['System.Title'],
+        state: wi.fields['System.State'] as WorkItemState,
+        assignedTo: wi.fields['System.AssignedTo']?.displayName || 'Unassigned',
+        organization: item.organization,
+        project: item.project,
+        type: wi.fields['System.WorkItemType'] as WorkItemType,
+        url: `https://dev.azure.com/${item.organization}/${item.project}/_workitems/edit/${wi.id}`,
+        content: wi.fields['System.Description'] || '',
+      }))).flat())
     );
   }
 
-  /** Get work items for a single Azure DevOps config */
   private getWorkItemsForConfig(config: IAzureDevOpsConfig) {
     const headers = new HttpHeaders({
       Authorization: `Basic ${btoa(':' + config.personalAccessToken)}`,
@@ -68,11 +64,9 @@ export class AzureDevopsService {
               From WorkItems
               Where [System.TeamProject] = "${config.project}"
                 And [System.State] IN ("Active", "New")
-                AND [System.WorkItemType] = "User Story"`
+                AND [System.WorkItemType] IN ("User Story", "Bug")`
     };
 
-    console.log('Fetching work items for config:', config);
-    // 1) Run WIQL to get IDs
     return this.http.post<WiqlResponse>(wiqlUrl, wiqlBody, { headers }).pipe(
       switchMap(response => {
         const ids = response.workItems?.map(w => w.id) ?? [];
@@ -82,27 +76,27 @@ export class AzureDevopsService {
         }
 
         // 2) Fetch details for those IDs in batches of 200
-        const chunks: number[][] = [];
-        for (let i = 0; i < ids.length; i += 200) {
-          chunks.push(ids.slice(i, i + 200));
-        }
+        const chunkSize = 200;
 
-        const requests = chunks.map(chunk => {
-          const idsParam = chunk.join(',');
-          const detailsUrl =
-            `https://dev.azure.com/${config.organization}/${config.project}/_apis/wit/workitems` +
-            `?ids=${idsParam}&$expand=relations&api-version=7.1`;
+        return from(ids).pipe(
+          bufferCount(chunkSize)
+        ).pipe(
+          map(chunk => {
+            const idsParam = chunk.join(',');
+            const detailsUrl =
+              `https://dev.azure.com/${config.organization}/${config.project}/_apis/wit/workitems` +
+              `?ids=${idsParam}&$expand=relations&api-version=7.1`;
 
-          return this.http.get<DevOpsWorkItemsResponse>(detailsUrl, { headers }).pipe(
-            map(r => ({ result: r.value, organization: config.organization, project: config.project }))
-          );
-        });
-
-        return forkJoin(requests).pipe(
+            return this.http.get<DevOpsWorkItemsResponse>(detailsUrl, { headers });
+          }),
           mergeMap(result => result),
-        );
-      })
-    );
+          map(itemsResponse => ({
+            organization: config.organization,
+            project: config.project,
+            result: itemsResponse.value
+          }))
+        )
+      }));
   }
 }
 
@@ -110,25 +104,29 @@ interface IAzureDevOpsConfig {
   organization: string;
   project: string;
   personalAccessToken: string;
-  // whatever else you have
 }
 
 interface WiqlResponse {
   workItems: { id: number; url: string }[];
 }
 
+interface DevOpsWorkItemsResponse {
+  value: DevOpsWorkItem[];
+}
+
 interface DevOpsWorkItem {
   id: number;
   url: string;
   fields: {
+
     'System.Title': string;
+    'System.BoardColumn': string;
     'System.WorkItemType': string;
     'System.State': string;
-    // add what you need
-    [key: string]: any;
+    'System.Description': string;
+    'System.AssignedTo'?: {
+      displayName: string;
+      imageUrl: string;
+    };
   };
-}
-
-interface DevOpsWorkItemsResponse {
-  value: DevOpsWorkItem[];
 }

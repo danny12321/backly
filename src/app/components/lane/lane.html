@@ -1,0 +1,17 @@
+<div class="lane">
+    <h2>{{ Name() }}</h2>
+
+    <div class="cards">
+        @for (workItem of Items(); track $index) {
+        <div class="card" [class]="workItem.type.split(' ').join('')">
+            <h3 title="{{workItem.title}}">
+                <a href="{{workItem.url}}">{{ workItem.title }}</a>
+            </h3>
+            <div class="footer">
+                <p class="assignedTo">{{ workItem.assignedTo }}</p>
+                <p class="organization">{{ workItem.organization }} > {{ workItem.project }}</p>
+            </div>
+        </div>
+        }
+    </div>
+</div>
